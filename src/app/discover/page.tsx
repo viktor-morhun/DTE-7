@@ -21,7 +21,7 @@ const focusLabels: Record<Focus, string> = {
 };
 
 const helperLabels: Record<Helper, string> = {
-  breakthrough: "I’m coming off a breakthrough",
+  "breakthrough": "I’m coming off a breakthrough",
   "goals-progress": "I’m clear on my goals and making progress.",
   focused: "I’m focused and determined.",
   habits: "I’m building habits that work for me.",
@@ -130,12 +130,12 @@ export default function DiscoverPage() {
       <div className='space-y-3'>
         {(Object.keys(helperLabels) as Array<keyof typeof helperLabels>).map(
           (key, i) => {
-            const isAllowed = key === "lead-improve";
+            const isAllowed = key === "breakthrough";
             return (
               <OptionButton
                 key={key}
                 align='left'
-                selected={flashIdx === i || key === "lead-improve"}
+                selected={flashIdx === i || key === "breakthrough"}
                 disabled={!isAllowed}
                 onClick={() =>
                   isAllowed &&
