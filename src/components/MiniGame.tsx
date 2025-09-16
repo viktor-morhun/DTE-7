@@ -439,7 +439,7 @@ export default function ResetSlotGame({
             </div>
 
             {won ? (
-                <div className="w-full">
+                <div className="w-full overflow-y-auto max-h-[calc(100vh-12rem)]" style={{ WebkitOverflowScrolling: 'touch' }}>
                     <motion.div
                         className="mb-[3.75rem] text-center"
                         initial={{ opacity: 0, y: 12 }}
