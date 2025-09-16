@@ -97,6 +97,8 @@ export default function ResetSlotGame({
     const [failed, setFailed] = useState(false);
     const [autoSpin, setAutoSpin] = useState(false);
     const [highlightedSymbolIndex, setHighlightedSymbolIndex] = useState<number | null>(null);
+    const [isProcessing, setIsProcessing] = useState(false);
+
 
 
     const spinRef = useRef<NodeJS.Timeout | null>(null);
@@ -186,73 +188,85 @@ export default function ResetSlotGame({
 
     // --- Ручна зупинка ---
     const handleLock = () => {
-        if (!started || stopped) return;
+        if (!started || stopped || isProcessing) return;
 
+        setIsProcessing(true); // блокуємо кліки
         setAutoSpin(false);
         setStopped(true);
-        spinRef.current && clearTimeout(spinRef.current);
+        if (spinRef.current) {
+            clearTimeout(spinRef.current);
+        }
 
-        const middleReel = reels[1];
-        if (!middleReel || middleReel.length === 0) return;
+        try {
+            const middleReel = reels[1];
+            if (!middleReel || middleReel.length === 0) {
+                return;
+            }
 
-        const len = middleReel.length;
-        // позитивний модуль
-        const currentIndex = ((spinOffsets[1] % len) + len) % len;
-        // індекс символа, який фактично видно (твоя логіка +1)
-        const displayIndex = (currentIndex + 1) % len;
-        const currentSymbol = middleReel[displayIndex];
-        // зберігаємо base-index (не індекс doubled масиву)
-        setHighlightedSymbolIndex(displayIndex);
+            const len = middleReel.length;
+            const currentIndex = ((spinOffsets[1] % len) + len) % len;
+            const displayIndex = (currentIndex + 1) % len;
+            const currentSymbol = middleReel[displayIndex];
+            setHighlightedSymbolIndex(displayIndex);
 
-        const targetSymbol = resetWord[activeIndex];
+            const targetSymbol = resetWord[activeIndex];
 
-        if (typeof currentSymbol === "string") {
-            setLocked((prev) => {
-                const copy = prev.slice();
-                copy[activeIndex] = {
-                    char: currentSymbol,
-                    status: currentSymbol === targetSymbol ? "correct" : "wrong",
-                } as LockedCell;
-                return copy;
-            });
+            if (typeof currentSymbol === "string") {
+                setLocked((prev) => {
+                    const copy = prev.slice();
+                    copy[activeIndex] = {
+                        char: currentSymbol,
+                        status: currentSymbol === targetSymbol ? "correct" : "wrong",
+                    };
+                    return copy;
+                });
 
-            if (currentSymbol === targetSymbol) {
-                setFailed(false);
-                // невелика пауза, щоб користувач побачив зелений підсвіт
-                setTimeout(() => {
-                    // якщо ще є наступна літера — переходимо
-                    if (activeIndex < resetWord.length - 1) {
+                if (currentSymbol === targetSymbol) {
+                    setFailed(false);
+                    setTimeout(() => {
                         handleNext();
-                    } else {
-                        setWon(true);
-                    }
-                }, 600);
+                    }, 600);
+                } else {
+                    setLives((prev) => {
+                        const next = prev - 1;
+                        if (next <= 0) setLost(true);
+                        return next;
+                    });
+                    setFailed(true);
+                }
             } else {
+                // Якщо випала іконка
+                setFailed(true);
                 setLives((prev) => {
                     const next = prev - 1;
                     if (next <= 0) setLost(true);
                     return next;
                 });
-                setFailed(true);
             }
+        } finally {
+            setIsProcessing(false); // ✅ завжди викликається
         }
-
-        // фіксуємо поточні offsets (зупиняємо анімацію)
-        setSpinOffsets((prev) => prev.map((o) => o));
     };
-
 
 
     // --- Наступний символ ---
     const handleNext = () => {
+        if (isProcessing) return;
+        setIsProcessing(true);
+
+        if (!locked[activeIndex] || locked[activeIndex]?.status !== "correct") {
+            setIsProcessing(false);
+            return; // не рухаємось далі
+        }
+
         setStopped(false);
         setHighlightedSymbolIndex(null);
         setTimer(30);
-
         setSpinOffsets([0, 0, 0]);
 
-        // очищаємо лише wrong у поточній клітинці (якщо була помилка)
-        setLocked((prev) => prev.map((v, i) => (i === activeIndex && v?.status === "wrong" ? null : v)));
+        setLocked((prev) =>
+            prev.map((v, i) => (i === activeIndex && v?.status === "wrong" ? null : v))
+        );
 
         if (activeIndex < resetWord.length - 1) {
             setActiveIndex((prev) => prev + 1);
@@ -266,10 +280,14 @@ export default function ResetSlotGame({
         } else {
             setWon(true);
         }
+
+        setIsProcessing(false);
     };
 
-
     const handleRetry = () => {
+        if (isProcessing) return;
+        setIsProcessing(true);
+
         setHighlightedSymbolIndex(null);
         setFailed(false);
         setStopped(false);
@@ -283,13 +301,13 @@ export default function ResetSlotGame({
             generateReel(resetWord, targetChar),
         ]);
 
-
-        // стираємо лише невдалу (wrong) спробу для поточної клітинки
-        setLocked((prev) => prev.map((v, i) => (i === activeIndex && v?.status === "wrong" ? null : v)));
+        setLocked((prev) =>
+            prev.map((v, i) => (i === activeIndex && v?.status === "wrong" ? null : v))
+        );
 
         setAutoSpin(true);
+        setIsProcessing(false);
     };
-
 
 
     const renderReels = () =>
@@ -387,6 +405,11 @@ export default function ResetSlotGame({
                         ))}
                     </div>
                 </div>
+
+                <div className="px-[40px] font-dmSans text-[14px] text-center text-white/70">
+                    When the center reel stops on your next letter, tap lock button!
+                </div>
+
                 <div className="flex justify-center items-center gap-[10px] mb-[10px]">
                     {resetWord.split("").map((_, i) => {
                         const cell = locked[i]; // LockedCell | null
@@ -410,7 +433,7 @@ export default function ResetSlotGame({
                     })}
                 </div>
 
-                <div className="font-dmSans text-[14px] text-center">
+                <div className="font-dmSans text-[14px] text-center text-white/70">
                     Target Word: <span className="font-bold"> {resetWord}</span>
                 </div>
             </div>
@@ -454,7 +477,7 @@ export default function ResetSlotGame({
                         transition={{ duration: 0.6, ease: EASE, delay: 0.6 }}
                         className="mt-auto"
                     >
-                        <Link href={'/quiz'} onClick={handleNext} className="flex justify-center items-center bg-white disabled:bg-white/50 rounded-[30px] w-full h-[3.75rem] active:font-bold text-black text-center">
+                        <Link href={'/execute'} onClick={handleNext} className="flex justify-center items-center bg-white disabled:bg-white/50 rounded-[30px] w-full h-[3.75rem] active:font-bold text-black text-center">
                             Next
                         </Link>
                     </motion.div>
@@ -469,14 +492,34 @@ export default function ResetSlotGame({
             {
                 stopped ? (
                     failed ? (
-                        <Button onClick={handleRetry}>Try again!</Button>
+                        <Button
+                            onClick={handleRetry}
+                            disabled={isProcessing} // блокує повторні кліки
+                        >
+                            Try again!
+                        </Button>
                     ) : (
-                        !won && <Button onClick={handleNext}>Next</Button>
+                        !won && (
+                            <Button
+                                onClick={handleNext}
+                                disabled={isProcessing} // блокує під час обробки
+                            >
+                                Next
+                            </Button>
+                        )
                     )
                 ) : (
-                    !won && <Button onClick={handleLock}>Reel Lock</Button>
+                    !won && (
+                        <Button
+                            onClick={handleLock}
+                            disabled={isProcessing || stopped} // блокує, поки обробка/зупинка
+                        >
+                            Reel Lock
+                        </Button>
+                    )
                 )
             }
+
         </div >
     );
 }
