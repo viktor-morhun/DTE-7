@@ -310,6 +310,7 @@ export default function ResetSlotGame({
     };
 
 
+
     const renderReels = () =>
         reels.map((reel, i) => (
             <div
@@ -392,7 +393,7 @@ export default function ResetSlotGame({
     }
 
     return (
-        <div className="flex flex-col items-center gap-6 p-6 w-full">
+        <div className="flex flex-col items-center w-full min-h-screen overflow-auto" style={{ WebkitOverflowScrolling: "touch" }}>
             <div className="flex flex-col gap-2 w-full font-mono text-3xl">
                 <div className="flex justify-between items-center mb-[24px] w-full">
                     <div className="mt-2 font-dmSans text-xl">
@@ -441,7 +442,7 @@ export default function ResetSlotGame({
             {won ? (
                 <div className="w-full">
                     <motion.div
-                        className="mb-[3.75rem] text-center"
+                        className="mb-[1.75rem] text-center"
                         initial={{ opacity: 0, y: 12 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ duration: 0.7, ease: EASE }}
@@ -455,7 +456,7 @@ export default function ResetSlotGame({
                             <PopperCrackerIcon />
                         </motion.div>
                         <motion.h1
-                            className="mb-4 font-bold text-[32px]"
+                            className="mb-[10px] font-bold text-[32px]"
                             initial={{ opacity: 0, y: 8 }}
                             animate={{ opacity: 1, y: 0 }}
                             transition={{ duration: 0.6, ease: EASE, delay: 0.1 }}
@@ -483,7 +484,7 @@ export default function ResetSlotGame({
                     </motion.div>
                 </div>
             ) : (
-                <div className="relative flex justify-center bg-black/40 mt-4 px-[20px] rounded-[24px] w-[304px] overflow-hidden gradient-custom">
+                <div className="relative flex justify-center bg-black/40 mt-4 mb-[30px] px-[20px] rounded-[24px] w-[304px] overflow-hidden gradient-custom">
                     {renderReels()}
                 </div>
             )
